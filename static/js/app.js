@@ -1,7 +1,4 @@
 async function buildMetadata(sample) {
-
-  // @TODO: Complete the following function that builds the metadata panel
-
   // Fetch sample metadata
   // Use d3 to select the panel with id of `#sample-metadata`
   let data = await d3.json("/metadata/" + sample);
@@ -15,16 +12,96 @@ async function buildMetadata(sample) {
   // tags for each key-value in the metadata.
   let metalist = metapanel.append("ul").classed("list-group", true);
   Object.entries(data).forEach(x => {
-    metalist.append("li")
-      .classed("list-group-item", true)
-      .text(x[0] + ": " + x[1]);
+    if (x[0] != 'WFREQ') {
+      metalist.append("li")
+        .classed("list-group-item", true)
+        .text(x[0] + ": " + x[1]);
+    }
   });
 
-    // BONUS: Build the Gauge Chart
-    // buildGauge(data.WFREQ);
+    // Build the Gauge Chart
+    buildGauge(data.WFREQ);
 }
 
-// Optional parameter for use by init() function
+
+// Build gauge
+// Note: `SELECT MAX(WFREQ) FROM sample_metadata;` returns 9.0
+function buildGauge(wfreq) {
+  // Trig to calculate meter point
+  let degrees = 180 - 20*wfreq,
+    radius = .5;
+  let radians = degrees * Math.PI / 180;
+  let x = radius * Math.cos(radians);
+  let y = radius * Math.sin(radians);
+
+  // Create path
+  let mainPath = 'M -.0 -0.025 L .0 0.025 L',
+    pathX = String(x),
+    space = ' ',
+    pathY = String(y),
+    pathEnd = ' Z';
+  let path = mainPath.concat(pathX, space, pathY, pathEnd);
+
+  let data = [{
+      type: 'scatter',
+      x: [0],
+      y: [0],
+      marker: {
+        size: 28,
+        color: '850000'
+      },
+      showlegend: false,
+      name: 'wash frequency',
+      text: wfreq,
+      hoverinfo: 'text+name'
+    }, {
+      values: [50/9, 50/9, 50/9, 50/9, 50/9, 50/9, 50/9, 50/9, 50/9, 50],
+      rotation: 90,
+      text: ['8-9','7-8','6-7','5-6','4-5','3-4','2-3','1-2','0-1',''],
+      textinfo: 'text',
+      textposition: 'inside',
+      marker: {colors:['rgba(25, 25, 22, .5)', 'rgba(51,50,44,.5)','rgba(77,75,67,.5)',
+        'rgba(103,100,89,.5)', 'rgba(128,125,112,.5)', 'rgba(154,150,134,.5)', 'rgba(180,175,157,.5)',
+        'rgba(206,200,179,.5)', 'rgba(232,226,202,.5)', 'rgba(255,255,255,0)']},
+      labels: ['8-9','7-8','6-7','5-6','4-5','3-4','2-3','1-2','0-1',''],
+      hoverinfo: 'label',
+      hole: .5,
+      type: 'pie',
+      showlegend: false
+    }
+  ];
+
+  let layout = {
+    shapes: [{
+        type: 'path',
+        path: path,
+        fillcolor: '850000',
+        line: {
+          color: '850000'
+        }
+    }],
+    title: '<b>Belly Button Washing Frequency</b><br /> Scrubs per Week',
+    height: 500,
+    width: 500,
+    xaxis: {
+      zeroline: false,
+      showticklabels: false,
+      showgrid: false,
+      range: [-1,1]
+    },
+    yaxis: {
+      zeroline: false,
+      showticklabels: false,
+      showgrid: false,
+      range: [-1,1]
+    }
+  };
+
+  Plotly.newPlot("gauge", data, layout);
+}
+
+
+
 async function buildCharts(sample, onInit=false) {
 
   // Fetch the sample data for the plots from /samples/<sample>
@@ -59,7 +136,7 @@ async function buildCharts(sample, onInit=false) {
       size: svs,
       color: ois,
       cmin: 0,
-      cmax: ois.reduce((a,e) => a>e ? a : e),
+      cmax: Math.max(...ois),
       colorscale: 'Earth'
     }
   };
